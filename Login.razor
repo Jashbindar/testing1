@@ -1,0 +1,156 @@
+﻿@page "/login"
+@inject NavigationManager _navigation
+@layout LoginRegisterLayout
+
+@inject HttpClient HttpHandler
+@inject UserDetail _LoginLogic
+@inject DatabaseAccountrix _DatabaseLogic
+@using System.Threading.Tasks
+
+@*Jash*@
+<div class="register-page">
+    <div class="form-title">
+        <h1>Login</h1>
+    </div>
+    <hr class="rounded-divider" />
+    <MudPaper Class="pa-16 ma-2" Elevation="20" Style="height: 50em; width: 50em; background-color: #121212; display: flex; flex-direction: column; align-items: center; justify-content: space-between; border-radius: 25px;">
+        <div class="error-message" style="display: @displaystatus;">
+            @if (loginstatus == false)
+            {
+                <MudAlert Severity="Severity.Error" Variant="Variant.Filled">@ErrorMessage</MudAlert>
+            }
+            else
+            {
+                <MudAlert Severity="Severity.Success" Variant="Variant.Filled">Successfully logged in!</MudAlert>
+            }
+        </div>
+        <div class="input-section">
+            <MudTextField Class="@class_style" @bind-Value="userDetail.email" Label="Email" HelperText="@HelperText1.text" Variant="Variant.Text" />
+        </div>
+        <div class="input-section">
+            <MudTextField Class="@class_style" @bind-Value="userDetail.password" Label="Password" HelperText="@HelperText2.text" Variant="Variant.Text" InputType="InputType.Password" />
+        </div>
+        <div class="btn-sign-up">
+            <MudButton OnClick="async() => await ProcessLogin()" Variant="Variant.Filled" Style="background-color: #fff200; color: #121212; width: 200px; height: 60px;">
+                Login
+            </MudButton>
+        </div>
+        <div class="not-sign-up">
+            <p>Don't have an account? <a href="/register">Sign up!</a></p>
+        </div>
+        <style>
+            .not-sign-up {
+                color: #ffffff;
+            }
+
+                .not-sign-up a {
+                    text-decoration: none;
+                    color: #fff20091;
+                    transition: all 0.3s ease-in-out;
+                }
+
+                    .not-sign-up a:hover {
+                        color: #fff200;
+                        transform: scale(1.1);
+                    }
+        </style>
+    </MudPaper>
+</div>
+
+@*Jash*@
+@code {
+    private bool loginstatus { get; set; }
+    private string displaystatus { get; set; } = "none";
+    private string ErrorMessage { get; set; } = "Testing Error Message";
+    private string class_style { get; set; } = "custom-textfield";
+
+    CustomHelperText HelperText1 = new CustomHelperText("Enter your registered email");
+    CustomHelperText HelperText2 = new CustomHelperText("Enter your password");
+
+    private class CustomHelperText
+    {
+        public string text { get; set; }
+
+        public CustomHelperText(string a_text)
+        {
+            text = a_text;
+        }
+    }
+
+    UserDetail userDetail = new UserDetail();
+    DatabaseAccountrix databaseLogic = new DatabaseAccountrix();
+
+    private void NavigateToLandingPage()
+    {
+        _navigation.NavigateTo("/home");
+    }
+
+    private async Task LoadUser()
+    {
+        // Fetch user data from backend
+        var response = await HttpHandler.GetFromJsonAsync<UserDetail>($"/login/{userDetail.email}");
+    }
+
+    //Fetch user data using WebAPI on initialization
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadUser();
+        }
+        catch (Exception ex)
+        {
+            // Handle errors
+            Console.WriteLine("Error occurred while fetching user data: " + ex.Message);
+            displaystatus = "flex";
+            ErrorMessage = "An error occurred while fetching user details";
+            StateHasChanged(); 
+        }
+    }
+
+    // password comparison
+    private async Task<bool> ValidatePassword()
+    {
+        if (userDetail.password == userDetail.getPassword()) // Compare password entered with stored one
+        {
+            Console.WriteLine("Login successful for user: {0}", userDetail.email);
+            return true;
+        }
+        else
+        {
+            Console.WriteLine("Invalid credentials for user: {0}", userDetail.email);
+            return false;
+        }
+    }
+
+    // Process the login
+    private async Task ProcessLogin()
+    {
+        try
+        {
+            if (await ValidatePassword())
+            {
+                loginstatus = true;
+                displaystatus = "flex";
+                ErrorMessage = "Login successful";
+                await Task.Delay(3500);
+                NavigateToLandingPage();  // Navigate to home page on successful login
+            }
+            else
+            {
+                loginstatus = false;
+                displaystatus = "flex";
+                ErrorMessage = "Invalid email or password";
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error occurred: " + ex.Message);
+            displaystatus = "flex";
+            ErrorMessage = "An error occurred during login";
+            StateHasChanged(); // Refresh UI on error
+        }
+    }
+}
